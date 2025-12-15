@@ -1,0 +1,37 @@
+/* styles.css */
+
+/* Animation de base */
+@keyframes flowAnimation {
+  from {
+    stroke-dashoffset: 20; /* Doit être le double de la taille du motif */
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* La classe à appliquer sur vos lignes SVG */
+.energy-flow {
+  fill: none; /* Pas de remplissage */
+  stroke-width: 4px; /* Épaisseur du câble */
+  stroke-linecap: round; /* Bouts arrondis pour faire joli */
+  stroke-dasharray: 10, 10; /* 10px de trait, 10px de vide */
+  animation: flowAnimation 1s linear infinite; /* Vitesse et boucle */
+  filter: drop-shadow(0 0 3px rgba(255, 255, 0, 0.6)); /* Effet NEON "Glow" */
+}
+
+/* Couleurs spécifiques par type d'énergie */
+.solar-flow {
+  stroke: #ffd700;
+} /* Jaune Or */
+.grid-flow {
+  stroke: #00b4d8;
+} /* Bleu Électrique */
+.battery-flow {
+  stroke: #52b788;
+} /* Vert */
+
+/* Pour inverser le sens du flux (ex: export vers réseau) */
+.flow-reverse {
+  animation-direction: reverse;
+}
