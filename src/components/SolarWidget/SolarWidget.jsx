@@ -1,4 +1,4 @@
-// SolarWidget.jsx - Optimized main component
+
 import { useState, useEffect, useCallback, useMemo, memo } from 'react';
 import { Car, Zap } from 'lucide-react';
 
@@ -10,34 +10,20 @@ import DeviceTile from './DeviceTile';
 import TimeOfDaySelector from './TimeOfDaySelector';
 import Hotspot from './Hotspot';
 
-// Memoized background component
-const BackgroundLayer = memo(({ preset, isActive }) => (
+const BackgroundLayer = memo(({ preset, isActive, baseUrl }) => (
     <div
         role="img"
         aria-label={`${preset.label} scene background`}
         aria-hidden={!isActive}
         className={`absolute inset-0 z-0 bg-cover bg-center bg-no-repeat transition-all duration-1000 ease-[cubic-bezier(0.25,0.1,0.25,1.0)] ${isActive ? 'opacity-100 scale-100 blur-0' : 'opacity-0 scale-105 blur-sm'}`}
-        style={{ backgroundImage: `url(${preset.image})` }}
+        style={{ backgroundImage: `url(${baseUrl}/assets/${preset.image})` }}
     />
 ));
 BackgroundLayer.displayName = 'BackgroundLayer';
 
-// CSS Animations as a constant (rendered once)
-const SKY_ANIMATIONS = `
-    @keyframes auroraMove { 0% { transform: translateX(-50%); } 100% { transform: translateX(0%); } }
-    @keyframes shootingStar1 { 0%, 90%, 100% { transform: translateX(0) translateY(0); opacity: 0; } 5% { opacity: 1; } 20% { transform: translateX(calc(100vw + 200px)) translateY(80px); opacity: 0; } }
-    @keyframes shootingStar2 { 0%, 85%, 100% { transform: translateX(0) translateY(0); opacity: 0; } 5% { opacity: 1; } 25% { transform: translateX(calc(80vw + 150px)) translateY(60px); opacity: 0; } }
-    @keyframes shootingStar3 { 0%, 80%, 100% { transform: translateX(0) translateY(0); opacity: 0; } 3% { opacity: 1; } 18% { transform: translateX(calc(70vw + 100px)) translateY(50px); opacity: 0; } }
-    @keyframes starTwinkle { 0%, 100% { opacity: 0.3; transform: scale(0.8); } 50% { opacity: 1; transform: scale(1.2); } }
-    @keyframes morningGlow { 0% { opacity: 0.6; } 100% { opacity: 1; } }
-    @keyframes mistRise { 0%, 100% { transform: translateY(0); opacity: 0.8; } 50% { transform: translateY(-20px); opacity: 0.4; } }
-    @keyframes softRays { 0% { opacity: 0.5; transform: translateX(-10px); } 100% { opacity: 1; transform: translateX(10px); } }
-    @keyframes sunRays { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-    @keyframes floatParticle { 0%, 100% { transform: translateY(0) translateX(0); opacity: 0.4; } 25% { transform: translateY(-15px) translateX(5px); opacity: 0.8; } 50% { transform: translateY(-25px) translateX(-5px); opacity: 0.6; } 75% { transform: translateY(-10px) translateX(8px); opacity: 0.9; } }
-    @keyframes lensFlare { 0% { opacity: 0.5; transform: scale(0.9); } 100% { opacity: 0.9; transform: scale(1.1); } }
-`;
 
-// Pre-generated stars data
+
+
 const STARS = Array.from({ length: 12 }, (_, i) => ({
     key: i,
     size: 1 + (i % 3),
@@ -71,13 +57,15 @@ export default function SolarWidget() {
 
     const calculatedData = useSolarData(currentPreset, simSettings);
 
-    // Preload images
+    const baseUrl = window.PUBLIC_URL || process.env.PUBLIC_URL || '';
+
+
     useEffect(() => {
-        presets.forEach(preset => {
+        Object.values(presets).forEach(preset => {
             const img = new Image();
-            img.src = preset.image;
+            img.src = `${baseUrl}/assets/${preset.image}`;
         });
-    }, [presets]);
+    }, [presets, baseUrl]);
 
     const isNightMode = activePreset === 'night' || activePreset === 'evening';
     const isMorning = activePreset === 'morning';
@@ -89,7 +77,7 @@ export default function SolarWidget() {
 
                 {/* Backgrounds */}
                 {presets.map((preset) => (
-                    <BackgroundLayer key={preset.id} preset={preset} isActive={activePreset === preset.id} />
+                    <BackgroundLayer key={preset.id} preset={preset} isActive={activePreset === preset.id} baseUrl={baseUrl} />
                 ))}
 
                 {/* Night Overlay */}
@@ -127,12 +115,12 @@ export default function SolarWidget() {
                     <div className="absolute top-[5%] left-[40%] w-[150px] h-[150px] rounded-full" style={{ background: 'radial-gradient(circle, rgba(255,230,150,0.3) 0%, rgba(255,200,100,0.1) 40%, transparent 70%)', animation: 'lensFlare 3s ease-in-out infinite alternate' }} />
                 </div>
 
-                <style>{SKY_ANIMATIONS}</style>
+
 
                 <TimeOfDaySelector presets={presets} activePreset={activePreset} onSelect={setPreset} />
 
                 {/* iPhone Container */}
-                <div className="absolute z-20 transition-all duration-500 left-1/2 top-[45%] -translate-x-1/2 -translate-y-1/2 w-[92vw] h-[78vh] max-w-[360px] max-h-[720px] md:inset-auto md:left-[5%] md:top-1/2 md:translate-x-0 md:-translate-y-1/2 md:w-[320px] md:h-[640px] md:max-h-[95vh] md:scale-[0.7] md:origin-left lg:scale-100 lg:origin-center lg:left-[5%] lg:top-1/2 lg:translate-x-0 lg:-translate-y-1/2 lg:w-auto lg:h-[90%] lg:aspect-[9/19.5]">
+                <div className="absolute z-20 transition-all duration-500 left-1/2 top-[42%] -translate-x-1/2 -translate-y-1/2 w-[82vw] h-[82vh] max-w-[340px] max-h-[780px] md:inset-auto md:left-[5%] md:top-1/2 md:translate-x-0 md:-translate-y-1/2 md:w-[320px] md:h-[640px] md:max-h-[95vh] md:scale-[0.7] md:origin-left lg:scale-100 lg:origin-center lg:left-[5%] lg:top-1/2 lg:translate-x-0 lg:-translate-y-1/2 lg:w-auto lg:h-[90%] lg:aspect-[9/19.5]">
                     <div className="relative w-full h-full bg-black overflow-hidden shadow-2xl rounded-[2.5rem] border-[6px] border-black ring-1 ring-white/10 lg:rounded-[3rem] lg:border-[8px] lg:ring-0">
                         <div className="absolute inset-0 z-50 bg-gradient-to-tr from-transparent via-white/5 to-transparent pointer-events-none opacity-50 hidden lg:block" />
 
@@ -153,7 +141,7 @@ export default function SolarWidget() {
                                     <div className="absolute top-0 left-2 sm:left-3 right-2 sm:right-3 h-[1px] pointer-events-none" style={{ background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.2) 30%, rgba(255,255,255,0.2) 70%, transparent)' }} />
                                     <div className="flex items-center justify-between">
                                         <h2 className="text-white text-lg sm:text-sm md:text-lg font-bold tracking-tight">My Energy</h2>
-                                        <img src="/Sunvolt_logo.webp" alt="Sunvolt" className="h-7 sm:h-5 md:h-7 w-auto object-contain opacity-90" />
+                                        <img src={`${baseUrl}/assets/Sunvolt_logo.webp`} alt="Sunvolt" className="h-7 sm:h-5 md:h-7 w-auto object-contain opacity-90" />
                                     </div>
                                 </div>
                             </div>
@@ -177,8 +165,8 @@ export default function SolarWidget() {
                     </div>
                 </div>
 
-                {/* Hotspots */}
-                <div className="hidden md:block absolute inset-0 pointer-events-none z-30">
+                {/* Hotspots (Desktop Only) */}
+                <div className="absolute inset-0 pointer-events-none z-30 desktop-only">
                     <Hotspot x={20.461} y={18.104} label="Battery 5.8 kWh" />
                     <Hotspot x={8} y={-12} label="Solar Panels 9.0 kWp" />
                     <Hotspot x={17.2} y={17} label="EV Charger 7.2 kW" />

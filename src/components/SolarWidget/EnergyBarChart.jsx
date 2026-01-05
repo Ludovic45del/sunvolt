@@ -1,4 +1,4 @@
-// EnergyBarChart.jsx - Optimized energy visualization
+
 import { memo, useMemo } from 'react';
 import { Zap, Home, Sun, Battery } from 'lucide-react';
 

@@ -1,4 +1,4 @@
-// LoadingSpinner.jsx - Suspense fallback component
+
 import { memo } from 'react';
 
 const LoadingSpinner = memo(() => (

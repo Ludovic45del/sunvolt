@@ -1,4 +1,4 @@
-// DeviceTile.jsx - Optimized toggleable device tile
+
 import { memo } from 'react';
 
 const DeviceTile = memo(({

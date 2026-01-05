@@ -2,7 +2,7 @@
   "name": "react",
   "version": "1.0.0",
   "description": "Sunvolt Solar Energy Widget",
-  "homepage": ".",
+  "homepage": "https://sunvolt.ie/wp-content/sunvolt-widget/build",
   "keywords": [],
   "main": "src/index.tsx",
   "dependencies": {

@@ -1,4 +1,4 @@
-// Hotspot.jsx - Optimized interactive indicator
+
 import { memo } from 'react';
 
 const Hotspot = memo(({ x, y, label }) => (
