@@ -1,7 +1,8 @@
 {
   "name": "react",
   "version": "1.0.0",
-  "description": "",
+  "description": "Sunvolt Solar Energy Widget",
+  "homepage": ".",
   "keywords": [],
   "main": "src/index.tsx",
   "dependencies": {

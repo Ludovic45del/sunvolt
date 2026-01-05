@@ -1,5 +1,5 @@
-// SolarWidget - Main component
-import { useState, useEffect, useCallback } from 'react';
+// SolarWidget.jsx - Optimized main component
+import { useState, useEffect, useCallback, useMemo, memo } from 'react';
 import { Car, Zap } from 'lucide-react';
 
 import { useSolarPresets } from '../../useSolarPresets';
@@ -10,25 +10,68 @@ import DeviceTile from './DeviceTile';
 import TimeOfDaySelector from './TimeOfDaySelector';
 import Hotspot from './Hotspot';
 
+// Memoized background component
+const BackgroundLayer = memo(({ preset, isActive }) => (
+    <div
+        role="img"
+        aria-label={`${preset.label} scene background`}
+        aria-hidden={!isActive}
+        className={`absolute inset-0 z-0 bg-cover bg-center bg-no-repeat transition-all duration-1000 ease-[cubic-bezier(0.25,0.1,0.25,1.0)] ${isActive ? 'opacity-100 scale-100 blur-0' : 'opacity-0 scale-105 blur-sm'}`}
+        style={{ backgroundImage: `url(${preset.image})` }}
+    />
+));
+BackgroundLayer.displayName = 'BackgroundLayer';
+
+// CSS Animations as a constant (rendered once)
+const SKY_ANIMATIONS = `
+    @keyframes auroraMove { 0% { transform: translateX(-50%); } 100% { transform: translateX(0%); } }
+    @keyframes shootingStar1 { 0%, 90%, 100% { transform: translateX(0) translateY(0); opacity: 0; } 5% { opacity: 1; } 20% { transform: translateX(calc(100vw + 200px)) translateY(80px); opacity: 0; } }
+    @keyframes shootingStar2 { 0%, 85%, 100% { transform: translateX(0) translateY(0); opacity: 0; } 5% { opacity: 1; } 25% { transform: translateX(calc(80vw + 150px)) translateY(60px); opacity: 0; } }
+    @keyframes shootingStar3 { 0%, 80%, 100% { transform: translateX(0) translateY(0); opacity: 0; } 3% { opacity: 1; } 18% { transform: translateX(calc(70vw + 100px)) translateY(50px); opacity: 0; } }
+    @keyframes starTwinkle { 0%, 100% { opacity: 0.3; transform: scale(0.8); } 50% { opacity: 1; transform: scale(1.2); } }
+    @keyframes morningGlow { 0% { opacity: 0.6; } 100% { opacity: 1; } }
+    @keyframes mistRise { 0%, 100% { transform: translateY(0); opacity: 0.8; } 50% { transform: translateY(-20px); opacity: 0.4; } }
+    @keyframes softRays { 0% { opacity: 0.5; transform: translateX(-10px); } 100% { opacity: 1; transform: translateX(10px); } }
+    @keyframes sunRays { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    @keyframes floatParticle { 0%, 100% { transform: translateY(0) translateX(0); opacity: 0.4; } 25% { transform: translateY(-15px) translateX(5px); opacity: 0.8; } 50% { transform: translateY(-25px) translateX(-5px); opacity: 0.6; } 75% { transform: translateY(-10px) translateX(8px); opacity: 0.9; } }
+    @keyframes lensFlare { 0% { opacity: 0.5; transform: scale(0.9); } 100% { opacity: 0.9; transform: scale(1.1); } }
+`;
+
+// Pre-generated stars data
+const STARS = Array.from({ length: 12 }, (_, i) => ({
+    key: i,
+    size: 1 + (i % 3),
+    top: `${1 + (i % 5)}%`,
+    left: `${10 + (i * 8) % 85}%`,
+    duration: 2 + (i % 3),
+    delay: i * 0.3,
+}));
+
+const PARTICLES = Array.from({ length: 15 }, (_, i) => ({
+    key: i,
+    size: 2 + (i % 3),
+    top: `${10 + (i * 5) % 60}%`,
+    left: `${20 + (i * 7) % 70}%`,
+    duration: 4 + (i % 3),
+    delay: i * 0.4,
+}));
+
+const SHOOTING_STARS = [
+    { w: 100, top: '5%', delay: '0s', dur: '6s' },
+    { w: 80, top: '3%', delay: '3s', dur: '8s' },
+    { w: 60, top: '8%', delay: '7s', dur: '10s' }
+];
+
 export default function SolarWidget() {
     const { activePreset, setPreset, currentPreset, presets } = useSolarPresets();
-
-    // Simulation state
     const [simSettings, setSimSettings] = useState({ ev: false, battery: true });
 
-    // Memoized toggle functions for better performance
-    const toggleEV = useCallback(() => {
-        setSimSettings(prev => ({ ...prev, ev: !prev.ev }));
-    }, []);
+    const toggleEV = useCallback(() => setSimSettings(prev => ({ ...prev, ev: !prev.ev })), []);
+    const toggleBattery = useCallback(() => setSimSettings(prev => ({ ...prev, battery: !prev.battery })), []);
 
-    const toggleBattery = useCallback(() => {
-        setSimSettings(prev => ({ ...prev, battery: !prev.battery }));
-    }, []);
-
-    // Calculated energy data
     const calculatedData = useSolarData(currentPreset, simSettings);
 
-    // Preload background images
+    // Preload images
     useEffect(() => {
         presets.forEach(preset => {
             const img = new Image();
@@ -36,256 +79,64 @@ export default function SolarWidget() {
         });
     }, [presets]);
 
+    const isNightMode = activePreset === 'night' || activePreset === 'evening';
+    const isMorning = activePreset === 'morning';
+    const isAfternoon = activePreset === 'afternoon';
+
     return (
         <div className="min-h-screen bg-[#0f172a] flex items-center justify-center overflow-hidden">
-            {/* 
-                RESPONSIVE LAYOUT:
-                - Mobile (< 640px): Full screen phone-only view
-                - Tablet/Desktop (>= 640px): Panoramic card with phone + background
-            */}
             <div className="relative w-full min-h-screen md:min-h-0 md:h-auto md:max-w-7xl md:aspect-video md:m-4 bg-black md:rounded-[2rem] shadow-2xl overflow-hidden md:border md:border-slate-700/50">
 
-                {/* Background Layers */}
+                {/* Backgrounds */}
                 {presets.map((preset) => (
-                    <div
-                        key={preset.id}
-                        className={`absolute inset-0 z-0 bg-cover bg-center bg-no-repeat transition-all duration-1000 ease-[cubic-bezier(0.25,0.1,0.25,1.0)] ${activePreset === preset.id ? 'opacity-100 scale-100 blur-0' : 'opacity-0 scale-105 blur-sm'}`}
-                        style={{
-                            backgroundImage: `url(${preset.image})`,
-                            willChange: activePreset === preset.id ? 'opacity, transform' : 'auto'
-                        }}
-                    />
+                    <BackgroundLayer key={preset.id} preset={preset} isActive={activePreset === preset.id} />
                 ))}
 
-                {/* Animated Night Sky Overlay */}
-                <div
-                    className={`absolute inset-0 z-[1] pointer-events-none transition-opacity duration-1000 ${activePreset === 'night' || activePreset === 'evening' ? 'opacity-100' : 'opacity-0'}`}
-                >
-                    {/* Moving Aurora Effect */}
+                {/* Night Overlay */}
+                <div className={`absolute inset-0 z-[1] pointer-events-none transition-opacity duration-1000 ${isNightMode ? 'opacity-100' : 'opacity-0'}`}>
                     <div className="absolute inset-0 overflow-hidden">
-                        <div
-                            className="absolute w-[200%] h-full"
-                            style={{
-                                background: 'linear-gradient(90deg, transparent 0%, rgba(59, 130, 246, 0.08) 25%, rgba(139, 92, 246, 0.1) 50%, rgba(59, 130, 246, 0.08) 75%, transparent 100%)',
-                                animation: 'auroraMove 15s linear infinite',
-                                willChange: 'transform'
-                            }}
-                        />
+                        <div className="absolute w-[200%] h-full" style={{ background: 'linear-gradient(90deg, transparent 0%, rgba(59, 130, 246, 0.08) 25%, rgba(139, 92, 246, 0.1) 50%, rgba(59, 130, 246, 0.08) 75%, transparent 100%)', animation: 'auroraMove 15s linear infinite' }} />
                     </div>
-
-                    {/* Shooting Stars optimized */}
-                    {[
-                        { w: 100, top: '5%', delay: '0s', dur: '6s' },
-                        { w: 80, top: '3%', delay: '3s', dur: '8s' },
-                        { w: 60, top: '8%', delay: '7s', dur: '10s' }
-                    ].map((star, i) => (
-                        <div
-                            key={i}
-                            className="absolute h-[1px]"
-                            style={{
-                                width: `${star.w}px`,
-                                top: star.top,
-                                left: `-${star.w}px`,
-                                background: 'linear-gradient(90deg, transparent, white 50%, rgba(255,255,255,0.8))',
-                                boxShadow: `0 0 ${6 - i}px 1px rgba(255,255,255,${0.6 - i * 0.1})`,
-                                animation: `shootingStar${i + 1} ${star.dur} ease-in-out infinite`,
-                                animationDelay: star.delay,
-                                willChange: 'transform'
-                            }}
-                        />
+                    {SHOOTING_STARS.map((star, i) => (
+                        <div key={i} className="absolute h-[1px]" style={{ width: `${star.w}px`, top: star.top, left: `-${star.w}px`, background: 'linear-gradient(90deg, transparent, white 50%, rgba(255,255,255,0.8))', boxShadow: `0 0 ${6 - i}px 1px rgba(255,255,255,${0.6 - i * 0.1})`, animation: `shootingStar${i + 1} ${star.dur} ease-in-out infinite`, animationDelay: star.delay }} />
                     ))}
-
-                    {/* Twinkling Stars Field */}
                     <div className="absolute inset-0">
-                        {[...Array(12)].map((_, i) => (
-                            <div
-                                key={i}
-                                className="absolute rounded-full bg-white"
-                                style={{
-                                    width: `${1 + (i % 3)}px`,
-                                    height: `${1 + (i % 3)}px`,
-                                    top: `${1 + (i % 5)}%`,
-                                    left: `${10 + (i * 8) % 85}%`,
-                                    animation: `starTwinkle ${2 + (i % 3)}s ease-in-out infinite`,
-                                    animationDelay: `${i * 0.3}s`,
-                                    boxShadow: '0 0 4px rgba(255,255,255,0.8)',
-                                    willChange: 'opacity, transform'
-                                }}
-                            />
+                        {STARS.map((star) => (
+                            <div key={star.key} className="absolute rounded-full bg-white" style={{ width: `${star.size}px`, height: `${star.size}px`, top: star.top, left: star.left, animation: `starTwinkle ${star.duration}s ease-in-out infinite`, animationDelay: `${star.delay}s`, boxShadow: '0 0 4px rgba(255,255,255,0.8)' }} />
                         ))}
                     </div>
                 </div>
 
-                {/* Morning Animated Overlay */}
-                <div
-                    className={`absolute inset-0 z-[1] pointer-events-none transition-opacity duration-1000 ${activePreset === 'morning' ? 'opacity-100' : 'opacity-0'}`}
-                >
-                    {/* Warm golden glow from right */}
-                    <div
-                        className="absolute inset-0"
-                        style={{
-                            background: 'radial-gradient(ellipse 80% 100% at 100% 30%, rgba(251, 199, 61, 0.15) 0%, transparent 60%)',
-                            animation: 'morningGlow 4s ease-in-out infinite alternate'
-                        }}
-                    />
-                    {/* Rising mist effect */}
-                    <div
-                        className="absolute bottom-0 left-0 right-0 h-[40%]"
-                        style={{
-                            background: 'linear-gradient(to top, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0.05) 50%, transparent 100%)',
-                            animation: 'mistRise 8s ease-in-out infinite'
-                        }}
-                    />
-                    {/* Soft light rays */}
-                    <div
-                        className="absolute top-0 right-0 w-[60%] h-full overflow-hidden"
-                        style={{
-                            background: 'linear-gradient(135deg, transparent 30%, rgba(255,200,100,0.08) 50%, transparent 70%)',
-                            animation: 'softRays 6s ease-in-out infinite alternate'
-                        }}
-                    />
+                {/* Morning Overlay */}
+                <div className={`absolute inset-0 z-[1] pointer-events-none transition-opacity duration-1000 ${isMorning ? 'opacity-100' : 'opacity-0'}`}>
+                    <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse 80% 100% at 100% 30%, rgba(251, 199, 61, 0.15) 0%, transparent 60%)', animation: 'morningGlow 4s ease-in-out infinite alternate' }} />
+                    <div className="absolute bottom-0 left-0 right-0 h-[40%]" style={{ background: 'linear-gradient(to top, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0.05) 50%, transparent 100%)', animation: 'mistRise 8s ease-in-out infinite' }} />
+                    <div className="absolute top-0 right-0 w-[60%] h-full overflow-hidden" style={{ background: 'linear-gradient(135deg, transparent 30%, rgba(255,200,100,0.08) 50%, transparent 70%)', animation: 'softRays 6s ease-in-out infinite alternate' }} />
                 </div>
 
-                {/* Afternoon Animated Overlay */}
-                <div
-                    className={`absolute inset-0 z-[1] pointer-events-none transition-opacity duration-1000 ${activePreset === 'afternoon' ? 'opacity-100' : 'opacity-0'}`}
-                >
-                    {/* Sun rays from top */}
+                {/* Afternoon Overlay */}
+                <div className={`absolute inset-0 z-[1] pointer-events-none transition-opacity duration-1000 ${isAfternoon ? 'opacity-100' : 'opacity-0'}`}>
                     <div className="absolute inset-0 overflow-hidden">
-                        <div
-                            className="absolute top-[-20%] left-[30%] w-[300px] h-[500px]"
-                            style={{
-                                background: 'conic-gradient(from 180deg, transparent 0deg, rgba(255,220,100,0.1) 15deg, transparent 30deg, transparent 50deg, rgba(255,220,100,0.08) 65deg, transparent 80deg, transparent 100deg, rgba(255,220,100,0.1) 115deg, transparent 130deg)',
-                                animation: 'sunRays 10s linear infinite',
-                                willChange: 'transform'
-                            }}
-                        />
+                        <div className="absolute top-[-20%] left-[30%] w-[300px] h-[500px]" style={{ background: 'conic-gradient(from 180deg, transparent 0deg, rgba(255,220,100,0.1) 15deg, transparent 30deg, transparent 50deg, rgba(255,220,100,0.08) 65deg, transparent 80deg, transparent 100deg, rgba(255,220,100,0.1) 115deg, transparent 130deg)', animation: 'sunRays 10s linear infinite' }} />
                     </div>
-                    {/* Floating particles */}
                     <div className="absolute inset-0">
-                        {[...Array(15)].map((_, i) => (
-                            <div
-                                key={i}
-                                className="absolute rounded-full"
-                                style={{
-                                    width: `${2 + (i % 3)}px`,
-                                    height: `${2 + (i % 3)}px`,
-                                    background: 'rgba(255,230,150,0.6)',
-                                    top: `${10 + (i * 5) % 60}%`,
-                                    left: `${20 + (i * 7) % 70}%`,
-                                    animation: `floatParticle ${4 + (i % 3)}s ease-in-out infinite`,
-                                    animationDelay: `${i * 0.4}s`,
-                                    boxShadow: '0 0 6px rgba(255,220,100,0.5)',
-                                    willChange: 'transform, opacity'
-                                }}
-                            />
+                        {PARTICLES.map((p) => (
+                            <div key={p.key} className="absolute rounded-full" style={{ width: `${p.size}px`, height: `${p.size}px`, background: 'rgba(255,230,150,0.6)', top: p.top, left: p.left, animation: `floatParticle ${p.duration}s ease-in-out infinite`, animationDelay: `${p.delay}s`, boxShadow: '0 0 6px rgba(255,220,100,0.5)' }} />
                         ))}
                     </div>
-                    {/* Warm lens flare */}
-                    <div
-                        className="absolute top-[5%] left-[40%] w-[150px] h-[150px] rounded-full"
-                        style={{
-                            background: 'radial-gradient(circle, rgba(255,230,150,0.3) 0%, rgba(255,200,100,0.1) 40%, transparent 70%)',
-                            animation: 'lensFlare 3s ease-in-out infinite alternate'
-                        }}
-                    />
+                    <div className="absolute top-[5%] left-[40%] w-[150px] h-[150px] rounded-full" style={{ background: 'radial-gradient(circle, rgba(255,230,150,0.3) 0%, rgba(255,200,100,0.1) 40%, transparent 70%)', animation: 'lensFlare 3s ease-in-out infinite alternate' }} />
                 </div>
 
-                {/* All Sky Animations */}
-                <style>{`
-                    @keyframes auroraMove {
-                        0% { transform: translateX(-50%); }
-                        100% { transform: translateX(0%); }
-                    }
-                    @keyframes shootingStar1 {
-                        0%, 90%, 100% { transform: translateX(0) translateY(0); opacity: 0; }
-                        5% { opacity: 1; }
-                        20% { transform: translateX(calc(100vw + 200px)) translateY(80px); opacity: 0; }
-                    }
-                    @keyframes shootingStar2 {
-                        0%, 85%, 100% { transform: translateX(0) translateY(0); opacity: 0; }
-                        5% { opacity: 1; }
-                        25% { transform: translateX(calc(80vw + 150px)) translateY(60px); opacity: 0; }
-                    }
-                    @keyframes shootingStar3 {
-                        0%, 80%, 100% { transform: translateX(0) translateY(0); opacity: 0; }
-                        3% { opacity: 1; }
-                        18% { transform: translateX(calc(70vw + 100px)) translateY(50px); opacity: 0; }
-                    }
-                    @keyframes starTwinkle {
-                        0%, 100% { opacity: 0.3; transform: scale(0.8); }
-                        50% { opacity: 1; transform: scale(1.2); }
-                    }
-                    @keyframes morningGlow {
-                        0% { opacity: 0.6; }
-                        100% { opacity: 1; }
-                    }
-                    @keyframes mistRise {
-                        0%, 100% { transform: translateY(0); opacity: 0.8; }
-                        50% { transform: translateY(-20px); opacity: 0.4; }
-                    }
-                    @keyframes softRays {
-                        0% { opacity: 0.5; transform: translateX(-10px); }
-                        100% { opacity: 1; transform: translateX(10px); }
-                    }
-                    @keyframes sunRays {
-                        0% { transform: rotate(0deg); }
-                        100% { transform: rotate(360deg); }
-                    }
-                    @keyframes floatParticle {
-                        0%, 100% { transform: translateY(0) translateX(0); opacity: 0.4; }
-                        25% { transform: translateY(-15px) translateX(5px); opacity: 0.8; }
-                        50% { transform: translateY(-25px) translateX(-5px); opacity: 0.6; }
-                        75% { transform: translateY(-10px) translateX(8px); opacity: 0.9; }
-                    }
-                    @keyframes lensFlare {
-                        0% { opacity: 0.5; transform: scale(0.9); }
-                        100% { opacity: 0.9; transform: scale(1.1); }
-                    }
-                `}</style>
+                <style>{SKY_ANIMATIONS}</style>
 
-                {/* Time of Day Selector */}
-                <TimeOfDaySelector
-                    presets={presets}
-                    activePreset={activePreset}
-                    onSelect={setPreset}
-                />
+                <TimeOfDaySelector presets={presets} activePreset={activePreset} onSelect={setPreset} />
 
-                {/* 
-                    WIDGET CONTAINER STRATEGY:
-                    - Mobile: Floating Glass Card centered on screen (background visible around it)
-                    - Desktop: iPhone Mockup positioned in the dashboard scene
-                */}
-                <div className={`
-                    absolute z-20 transition-all duration-500
-                    /* Mobile: Floating Phone in Landscape */
-                    left-1/2 top-[45%] -translate-x-1/2 -translate-y-1/2
-                    w-[92vw] h-[78vh] max-w-[360px] max-h-[720px] md:inset-auto 
-                    
-                    /* Tablet: Positioned Left */
-                    md:left-[5%] md:top-1/2 md:translate-x-0 md:-translate-y-1/2
-                    md:w-[320px] md:h-[640px] md:max-h-[95vh]
-                    md:scale-[0.7] md:origin-left
-                    
-                    /* Desktop: Positioned iPhone */
-                    lg:scale-100 lg:origin-center
-                    lg:left-[5%] lg:top-1/2 lg:translate-x-0 lg:-translate-y-1/2 lg:w-auto lg:h-[90%] lg:aspect-[9/19.5]
-                `}>
-                    <div className={`
-                        relative w-full h-full bg-black overflow-hidden shadow-2xl
-                        /* iPhone-style Frame (All sizes) */
-                        rounded-[2.5rem] border-[6px] border-black ring-1 ring-white/10
-                        
-                        /* Premium Tablet/Desktop Refinements */
-                        lg:rounded-[3rem] lg:border-[8px] lg:ring-0
-                    `}>
-                        {/* Desktop-only: Screen reflections */}
+                {/* iPhone Container */}
+                <div className="absolute z-20 transition-all duration-500 left-1/2 top-[45%] -translate-x-1/2 -translate-y-1/2 w-[92vw] h-[78vh] max-w-[360px] max-h-[720px] md:inset-auto md:left-[5%] md:top-1/2 md:translate-x-0 md:-translate-y-1/2 md:w-[320px] md:h-[640px] md:max-h-[95vh] md:scale-[0.7] md:origin-left lg:scale-100 lg:origin-center lg:left-[5%] lg:top-1/2 lg:translate-x-0 lg:-translate-y-1/2 lg:w-auto lg:h-[90%] lg:aspect-[9/19.5]">
+                    <div className="relative w-full h-full bg-black overflow-hidden shadow-2xl rounded-[2.5rem] border-[6px] border-black ring-1 ring-white/10 lg:rounded-[3rem] lg:border-[8px] lg:ring-0">
                         <div className="absolute inset-0 z-50 bg-gradient-to-tr from-transparent via-white/5 to-transparent pointer-events-none opacity-50 hidden lg:block" />
 
-                        {/* App Screen */}
                         <div className="relative w-full h-full bg-black overflow-hidden flex flex-col font-sans select-none">
-
-                            {/* App Background */}
                             <div className="absolute inset-0 bg-[#0f172a]" />
 
                             {/* Dynamic Island */}
@@ -296,51 +147,24 @@ export default function SolarWidget() {
                                 </div>
                             </div>
 
-                            {/* Header Content */}
+                            {/* Header */}
                             <div className="relative z-10 px-4 sm:px-3 md:px-5 mt-4 sm:mt-3 md:mt-5 mb-3 sm:mb-2 md:mb-5">
-                                <div
-                                    className="relative rounded-2xl sm:rounded-xl md:rounded-2xl p-4 sm:p-2.5 md:p-4 overflow-hidden"
-                                    style={{
-                                        background: 'linear-gradient(135deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.02) 100%)',
-                                        backdropFilter: 'blur(16px)',
-                                        WebkitBackdropFilter: 'blur(16px)',
-                                        border: '1px solid rgba(255,255,255,0.08)',
-                                        boxShadow: '0 4px 24px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1)'
-                                    }}
-                                >
-                                    <div
-                                        className="absolute top-0 left-2 sm:left-3 right-2 sm:right-3 h-[1px] pointer-events-none"
-                                        style={{
-                                            background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.2) 30%, rgba(255,255,255,0.2) 70%, transparent)'
-                                        }}
-                                    />
+                                <div className="relative rounded-2xl sm:rounded-xl md:rounded-2xl p-4 sm:p-2.5 md:p-4 overflow-hidden" style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.02) 100%)', backdropFilter: 'blur(16px)', border: '1px solid rgba(255,255,255,0.08)', boxShadow: '0 4px 24px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1)' }}>
+                                    <div className="absolute top-0 left-2 sm:left-3 right-2 sm:right-3 h-[1px] pointer-events-none" style={{ background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.2) 30%, rgba(255,255,255,0.2) 70%, transparent)' }} />
                                     <div className="flex items-center justify-between">
-                                        <h2 className="text-white text-lg sm:text-sm md:text-lg font-bold tracking-tight drop-shadow-lg">My Energy</h2>
-                                        <img src="/Sunvolt_logo.png" alt="Sunvolt Logo" className="h-7 sm:h-5 md:h-7 w-auto object-contain opacity-90" />
+                                        <h2 className="text-white text-lg sm:text-sm md:text-lg font-bold tracking-tight">My Energy</h2>
+                                        <img src="/Sunvolt_logo.webp" alt="Sunvolt" className="h-7 sm:h-5 md:h-7 w-auto object-contain opacity-90" />
                                     </div>
                                 </div>
                             </div>
 
                             {/* Device Tiles */}
                             <div className="relative z-10 px-4 sm:px-3 md:px-5 grid grid-cols-2 gap-3 sm:gap-1.5 md:gap-3 mb-3 sm:mb-1.5 md:mb-2">
-                                <DeviceTile
-                                    icon={Car}
-                                    label="EV Charger"
-                                    isActive={simSettings.ev}
-                                    onClick={toggleEV}
-                                    activeColor="bg-[#fbc73d]"
-                                    activeTextColor="text-[#19344d]"
-                                    activeShadow="shadow-[0_5px_20px_rgba(251,199,61,0.3)]"
-                                />
-                                <DeviceTile
-                                    icon={Zap}
-                                    label="Battery"
-                                    isActive={simSettings.battery}
-                                    onClick={toggleBattery}
-                                />
+                                <DeviceTile icon={Car} label="EV Charger" isActive={simSettings.ev} onClick={toggleEV} />
+                                <DeviceTile icon={Zap} label="Battery" isActive={simSettings.battery} onClick={toggleBattery} />
                             </div>
 
-                            {/* Energy Bar Chart */}
+                            {/* Energy Chart */}
                             <div className="flex-1 relative w-full overflow-hidden">
                                 <EnergyBarChart data={calculatedData} showBattery={simSettings.battery} />
                             </div>
@@ -353,7 +177,7 @@ export default function SolarWidget() {
                     </div>
                 </div>
 
-                {/* Hotspot Layer - Tablet+ */}
+                {/* Hotspots */}
                 <div className="hidden md:block absolute inset-0 pointer-events-none z-30">
                     <Hotspot x={20.461} y={18.104} label="Battery 5.8 kWh" />
                     <Hotspot x={8} y={-12} label="Solar Panels 9.0 kWp" />

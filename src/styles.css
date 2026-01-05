@@ -1,137 +1,22 @@
-/* styles.css */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+/* Sunvolt Widget Styles */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
-body {
-  font-family: 'Inter', sans-serif;
-  margin: 0;
-  padding: 0;
-  overflow: hidden;
-  /* Empêcher le scroll sur le widget */
+/* Minimal global reset that won't break host sites */
+#sunvolt-widget-container {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  line-height: 1.5;
 }
 
-/* --- LIQUID GLASS EFFECT --- */
-.glass-panel {
-  background: rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
-}
+/* Respect reduced motion preferences */
+@media (prefers-reduced-motion: reduce) {
 
-.glass-button {
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  border-top: 1px solid rgba(255, 255, 255, 0.4);
-  border-left: 1px solid rgba(255, 255, 255, 0.2);
-  border-right: 1px solid rgba(255, 255, 255, 0.1);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow:
-    0 4px 6px rgba(0, 0, 0, 0.05),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.05);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  position: relative;
-  overflow: hidden;
-}
-
-.glass-button::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(90deg,
-      transparent,
-      rgba(255, 255, 255, 0.2),
-      transparent);
-  transition: 0.5s;
-}
-
-.glass-button:hover {
-  transform: translateY(-2px);
-  background: rgba(255, 255, 255, 0.2);
-  box-shadow:
-    0 8px 15px rgba(0, 0, 0, 0.1),
-    0 0 20px rgba(255, 255, 255, 0.2),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.2);
-}
-
-.glass-button:hover::before {
-  left: 100%;
-}
-
-.glass-button.active {
-  background: rgba(255, 255, 255, 0.25);
-  border-top: 1px solid rgba(255, 255, 255, 0.8);
-  box-shadow:
-    0 0 30px rgba(255, 255, 255, 0.3),
-    inset 0 0 20px rgba(255, 255, 255, 0.1);
-}
-
-/* --- NEON ENERGY FLOW --- */
-@keyframes flowPulse {
-  0% {
-    stroke-dashoffset: 24;
-    opacity: 0.4;
-  }
-
-  50% {
-    opacity: 1;
-  }
-
-  100% {
-    stroke-dashoffset: 0;
-    opacity: 0.4;
-  }
-}
-
-.neon-path {
-  fill: none;
-  stroke-width: 6;
-  stroke-linecap: round;
-  stroke-dasharray: 6 12;
-  animation: flowPulse 1.5s linear infinite;
-  filter: drop-shadow(0 0 8px currentColor);
-}
-
-.neon-path.reverse {
-  animation-direction: reverse;
-}
-
-/* --- FLOATING ORBS --- */
-@keyframes float {
-
-  0%,
-  100% {
-    transform: translateY(0px);
-  }
-
-  50% {
-    transform: translateY(-10px);
-  }
-}
-
-.floating-orb {
-  animation: float 6s ease-in-out infinite;
-}
-
-/* --- TYPOGRAPHY GLOW --- */
-.text-glow {
-  text-shadow: 0 0 20px rgba(255, 255, 255, 0.5);
-}
-
-/* --- GLASS SHINE EFFECT --- */
-@keyframes shine {
-  0% {
-    transform: skewX(-20deg) translateX(-150%);
-  }
-
-  50% {
-    transform: skewX(-20deg) translateX(150%);
-  }
-
-  100% {
-    transform: skewX(-20deg) translateX(150%);
+  #sunvolt-widget-container *,
+  #sunvolt-widget-container *::before,
+  #sunvolt-widget-container *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }

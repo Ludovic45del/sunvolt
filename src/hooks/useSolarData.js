@@ -1,83 +1,47 @@
-// useSolarData - Realistic energy flow calculations
+// useSolarData.js - Optimized energy flow calculations
 import { useMemo } from 'react';
 
-/**
- * Calculates realistic energy flows based on:
- * - Energy balance: PV + Grid + Battery = Load
- * - Priority: Solar covers load first, then battery, then grid
- * - EV charging adds significant load (7-11 kW)
- */
+const BATTERY_POWER_LIMIT = 5; // kW
+const EV_CHARGER_POWER = 7.4; // kW
+
+const DEFAULT_DATA = {
+    pv: 0,
+    load: 0,
+    battery: 0,
+    batteryState: 'idle',
+    grid: 0,
+};
+
 export function useSolarData(currentPreset, simSettings) {
-    const calculatedData = useMemo(() => {
-        if (!currentPreset?.data) {
-            return {
-                pv: 0,
-                load: 0,
-                battery: 0,
-                batteryState: 'idle',
-                grid: 0,
-            };
-        }
+    return useMemo(() => {
+        if (!currentPreset?.data) return DEFAULT_DATA;
 
-        // Clone base values from preset
-        let { pv, load, battery, batteryState, grid } = { ...currentPreset.data };
+        let { pv, load, battery, batteryState, grid } = currentPreset.data;
 
-        // --- MODIFIERS ---
+        // EV Charger adds load
+        if (simSettings.ev) load += EV_CHARGER_POWER;
 
-        // 1. EV Charger adds 7.4 kW load (typical home charger)
-        if (simSettings.ev) {
-            load += 7.4;
-        }
-
-        // --- ENERGY BALANCE CALCULATION ---
-        // Priority order: Solar -> Battery -> Grid
-
-        const netDemand = load - pv; // Positive = need more, Negative = excess
+        const netDemand = load - pv;
 
         if (simSettings.battery) {
             if (netDemand > 0) {
-                // Need more energy than solar provides
-                // Battery can discharge up to 5 kW (Powerwall limit)
-                const batteryPower = Math.min(netDemand, 5);
-                const remainingDemand = netDemand - batteryPower;
-
-                if (remainingDemand > 0) {
-                    // Still need more -> import from grid
-                    grid = remainingDemand;
-                } else {
-                    grid = 0;
-                }
+                const batteryPower = Math.min(netDemand, BATTERY_POWER_LIMIT);
+                grid = Math.max(0, netDemand - batteryPower);
                 batteryState = 'discharging';
-
-                // Drain battery proportionally (rough simulation)
-                battery = Math.max(0, battery - (batteryPower * 2));
-
+                battery = Math.max(0, battery - batteryPower * 2);
             } else {
-                // Excess solar energy
-                const excess = Math.abs(netDemand);
-                // Battery can charge up to 5 kW
-                const batteryCharge = Math.min(excess, 5);
-                const gridExport = excess - batteryCharge;
-
-                grid = -gridExport; // Negative = export
+                const excess = -netDemand;
+                const batteryCharge = Math.min(excess, BATTERY_POWER_LIMIT);
+                grid = -(excess - batteryCharge);
                 batteryState = battery < 100 ? 'charging' : 'idle';
-
-                // Charge battery proportionally
-                battery = Math.min(100, battery + (batteryCharge * 1.5));
+                battery = Math.min(100, battery + batteryCharge * 1.5);
             }
         } else {
-            // No battery - direct grid interaction
             battery = 0;
             batteryState = 'idle';
-
-            if (netDemand > 0) {
-                grid = netDemand; // Import from grid
-            } else {
-                grid = netDemand; // Export to grid (negative)
-            }
+            grid = netDemand;
         }
 
-        // Round values for cleaner display
         return {
             pv: Math.round(pv * 10) / 10,
             load: Math.round(load * 10) / 10,
@@ -86,6 +50,4 @@ export function useSolarData(currentPreset, simSettings) {
             grid: Math.round(grid * 10) / 10,
         };
     }, [currentPreset, simSettings]);
-
-    return calculatedData;
 }
