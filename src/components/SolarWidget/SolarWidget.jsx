@@ -27,7 +27,9 @@ export default function SolarWidget() {
 
     const calculatedData = useSolarData(currentPreset, simSettings);
 
-    const baseUrl = window.PUBLIC_URL || process.env.PUBLIC_URL || '';
+    // Dynamic base URL support for WordPress plugin
+    // In WP, window.sunvoltWidgetBaseUrl will be set by the PHP plugin wrapper
+    const baseUrl = window.sunvoltWidgetBaseUrl || window.PUBLIC_URL || process.env.PUBLIC_URL || '';
 
     // Preload images
     useEffect(() => {
